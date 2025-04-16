@@ -1,0 +1,74 @@
+name: provision infrastructure 
+
+on: 
+  push: 
+    branches:
+      - main 
+      - dev 
+  pull_request:
+    branches:
+      - main 
+
+permissions:
+  contents: read 
+  id-token: write
+
+jobs: 
+
+  validating_tf:
+    runs-on: ubuntu-latest 
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v4
+
+      - name: Run Terrascan
+        id: terrascan
+        uses: tenable/terrascan-action@main
+        with:
+          iac_type: 'terraform'
+          iac_version: 'v14'
+          policy_type: 'aws'
+          only_warn: true
+          sarif_upload: true
+         
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: terrascan.sarif
+
+  terraform: 
+    runs-on: ubuntu-latest 
+    if: always()
+    needs: [validating_tf]
+    environment: ${{ github.ref_name }} #get correct the environment <dev or main >
+    
+    defaults:
+      run:
+        working-directory: app.tf #because the tf code is inside subdirectory
+
+    steps: 
+      - name: Checkout 
+        uses: actions/checkout@v4
+      
+      - name: Configuration the AWS Credential 
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::539247450054:role/github-svc-tf-provision-infra
+          aws-region: ap-southeast-1
+          role-session-name: github-svc-tf-provision-infra
+
+      - name: Setup terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_version: 1.6.3 #verify with your end terraform version
+
+      - name: Terraform init
+        run: terraform init -backend-config="key=github_ci/infra/${{ github.ref_name }}-provision.tfstate"
+
+      - name: Terraform plan for ${{ github.ref_name }} environment 
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: terraform plan -var-file=envs/${{ github.ref_name }}.tfvars 
+
+      - name: Terraform apply for ${{ github.ref_name }} environment 
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -var-file=envs/${{ github.ref_name }}.tfvars
