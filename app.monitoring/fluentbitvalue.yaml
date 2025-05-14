@@ -1,0 +1,13 @@
+serviceAccount:
+    create: true
+    name: fluent-bit
+config:
+    outputs: |
+        [OUTPUT]
+            Name        loki
+            Match       *
+            Host        10.99.217.46 
+            Port        3100
+            Labels      job=fluentbit
+            Line_Format json
+            Auto_Kubernetes_Labels On

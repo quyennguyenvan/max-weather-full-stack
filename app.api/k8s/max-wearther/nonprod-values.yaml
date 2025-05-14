@@ -1,0 +1,24 @@
+domain: dev-api.quyennv.com
+namespace: maxwearth-dev
+env_type: nonprod
+deployment:
+  replicas: 1
+  container:
+    name: maxwearth-api
+    image: quyencl91/maxweather
+    tag: latest
+    port: 8086
+    resources:
+      requests:
+        cpu: "256m"
+        memory: "512Mi"
+      limits:
+        cpu: "512m"
+        memory: 1"1024Mi"
+
+service:
+  port: 80
+  type: ClusterIP
+
+ingres:
+  port: 80

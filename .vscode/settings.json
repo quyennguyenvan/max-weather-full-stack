@@ -1,0 +1,7 @@
+{
+  "[yaml]": {
+    "editor.formatOnType": false,
+    "editor.formatOnPaste": false
+  },
+  "prettier.disableLanguages": ["yaml"]
+}

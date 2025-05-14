@@ -81,7 +81,7 @@ api_gateways = {
       "GET /" = {
         integration = {
           type   = "HTTP_PROXY"
-          uri    = "https://max-weather.free.beeceptor.com"
+          uri    = "https://application.free.beeceptor.com"
           method = "GET"
         }
       }

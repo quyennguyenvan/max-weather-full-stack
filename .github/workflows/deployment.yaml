@@ -30,11 +30,11 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker build -f app.api/app.dockerfile  -t quyencl91/max-weather:${{ github.sha }} .
+        docker build -f app.api/app.dockerfile  -t quyencl91/application:${{ github.sha }} .
       
     - name: Push Docker image to Docker hub
       run: |
-        docker push quyencl91/max-weather:${{ github.sha }}
+        docker push quyencl91/application:${{ github.sha }}
 
   deploy:
     needs: build
@@ -54,20 +54,50 @@ jobs:
     - name: Update kube config
       run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
-    - name: Apply Kubernetes manifest
+    # - name: Apply Kubernetes manifest
+    #   run: |
+    #     ENV=prod
+    #     if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+    #       ENV=dev
+    #     fi
+    #     echo "current env deploy: ${ENV}"
+    #     sed -i "s|ENV|${ENV}|g" app.api/k8s/manifest.yaml
+    #     sed -i "s|CONTAINER_REGISTRY_BASE_URI|quyencl91/application:${{ github.sha }}|g" app.api/k8s/manifest.yaml
+
+    #     echo "viewing the manifest"
+    #     cat app.api/k8s/manifest.yaml
+    #     kubectl apply -f app.api/k8s/manifest.yaml
+    #     kubectl rollout status deployment/app-api -n application-${ENV}
+
+    - name: helm configuration 
       run: |
         ENV=prod
         if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
           ENV=dev
         fi
-        echo "current env deploy: ${ENV}"
-        sed -i "s|ENV|${ENV}|g" app.api/k8s/manifest.yaml
-        sed -i "s|CONTAINER_REGISTRY_BASE_URI|quyencl91/max-weather:${{ github.sha }}|g" app.api/k8s/manifest.yaml
+        sed -i "s|ENV|${ENV}|g" app.api/appdeploy/values.yaml
+        sed -i "s|CONTAINER_REGISTRY_BASE_URI|quyencl91/application:${{ github.sha }}|g" app.api/appdeploy/values.yaml
 
-        echo "viewing the manifest"
-        cat app.api/k8s/manifest.yaml
-        kubectl apply -f app.api/k8s/manifest.yaml
-        kubectl rollout status deployment/app-api -n max-weather-${ENV}
+    - name: Deployment application with helm 
+      run: | 
+        helm install application-app  app.api/appdeploy -f app.api/appdeploy/values.yaml
+
+    - name: Validating deployment 
+      run: | 
+        ENV=prod
+        if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+          ENV=dev
+        fi
+        kubectl get all -n application-${ENV}
+        sleep 10
+        pod_count=$(kubectl get pod -n application-${ENV} --field-selector=status.phase=Running --no-headers | wc -l)
+        if [[ $pod_count -eq 0 ]]; then
+          echo "No pods found in the namespace application-${ENV}"
+          exit 1
+        else
+          echo "Pods found in the namespace application-${ENV}"
+        fi
+
   tvt:
     needs: deploy
     runs-on: ubuntu-latest

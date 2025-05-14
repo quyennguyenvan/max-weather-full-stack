@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "application.name" . }}-api
+  namespace: {{ include "application.namespace" . }}
+spec:
+  {{- if eq .Values.env_type "prod "}}
+  replicas: {{ .Values.replicaCount | default 3 }}
+  {{- else }}
+  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "application.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "application.name" . }}
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - {{ include "application.name" . }}
+              topologyKey: kubernetes.io/hostname
+      imagePullSecrets:
+        - name: dockerhub
+      containers:
+        - name: {{ include "application.name" . }}-{{ .Values.deployment.container.name }}
+          image: {{ .Values.deployment.container.image}}:{{ .Values.deployment.container.tag }}
+          ports:
+            - containerPort: {{ .Values.deployment.container.port }}
+              name: {{ include "application.name" . }}
+          resources:
+            requests:
+              cpu: {{ .Values.deployment.container.resources.requests.cpu }}
+              memory: {{ .Values.deployment.container.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.deployment.container.resources.limits.cpu }}
+              memory: {{ .Values.deployment.container.resources.limits.memory }}

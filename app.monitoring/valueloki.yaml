@@ -1,0 +1,6 @@
+loki:
+  auth_enabled: false # Ensure authentication is disabled
+  config:
+    auth_enabled: false
+  image:
+    tag: 2.9.3
