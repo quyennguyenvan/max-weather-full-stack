@@ -9,3 +9,5 @@ flask==2.2.5
 Werkzeug==2.2.2
 Flask-APScheduler
 passlib
+elastic-apm[flask]
+psutil

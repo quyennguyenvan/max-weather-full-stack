@@ -1,4 +1,7 @@
 
+from elasticapm.contrib.flask import ElasticAPM
+import requests
+
 from flask import Flask, request, Response, jsonify, current_app
 
 import jwt
@@ -24,6 +27,15 @@ cors = CORS(app, resources={r"*": {"origins": "https://weathear-api.quyennv.com,
 
 app.config['CORS_HEADERS'] = ['Content-Type',
                               'Access-Control-Allow-Origin', 'Access-Control-Allow-Credentials']
+# app = Flask(__name__)
+#load the APM agent configuration
+app.config['ELASTIC_APM'] = {
+  'SERVICE_NAME': 'sso-svc-prod',
+  'SECRET_TOKEN': 'J8Svf1qA0tM4cZ4pv1',
+  'SERVER_URL': 'https://fef9fa1f77874d13bcad7d1f6972fa7d.apm.us-east-2.aws.elastic-cloud.com:443',
+  'ENVIRONMENT': 'pilot',
+}
+apm = ElasticAPM(app)
 
 @app.after_request
 def after_request(response):
@@ -65,8 +77,19 @@ def VerifyJWTToken(f):
 @app.route("/v1/ping", methods=["GET", "POST"])
 def ping():
     current_app.logger.info('ping')
-    return jsonify({"message":"success","version":"14"}), 200
+    #call to external app - success call
+    uri = "http://127.0.0.1:8087/v1/call-robot"
+    response = requests.get(uri)
+    return jsonify({"message":"success","version":"14", "response-ext": response.status_code}), 200
 
+@cross_origin()
+@app.route("/v1/damage", methods=["GET", "POST"])
+def damage():
+    current_app.logger.info('ping')
+    #call to external app - success call
+    uri = "http://127.0.0.1:8087/v1/call-robot-false"
+    response = requests.get(uri)
+    return jsonify({"message":"failure","version":"14"}), 200
 
 @cross_origin()
 @ app.route("/v1/login", methods=["GET", "POST"])
